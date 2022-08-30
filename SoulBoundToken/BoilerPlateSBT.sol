@@ -21,7 +21,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
         _mintPriceInKlay = mintPrice;
     }
 
-    // implement for test
+    // implement for minting test
     function safeMintWithTokenURI(address to, string memory _tokenURI) external payable {
         require(msg.value == _mintPriceInKlay, "minting price is not valid");
         uint256 tokenId = _tokenIdCounter.current();
@@ -34,7 +34,6 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     internal
     override(KIP17, KIP17Enumerable, KIP17Pausable) {
         require(from == address(0), "Err: token is SOUL BOUND");
-        super._beforeTokenTransfer(from, to, tokenId);
         require(!paused(), "KIP17Pausable: token transfer while paused");
     }
 
@@ -53,10 +52,40 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     }
 
     function tokenURI(uint256 tokenId) public view override(KIP17, KIP17URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
+        require(_exists(tokenId), "KIP17URIStorage: URI query for nonexistent token");
+
+        string memory _tokenURI = _tokenURIs[tokenId];
+        string memory base = _baseURI();
+
+        // If there is no base URI, return the token URI.
+        if (bytes(base).length == 0) {
+            return _tokenURI;
+        }
+        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
+        if (bytes(_tokenURI).length > 0) {
+            return string(abi.encodePacked(base, _tokenURI));
+        }
+
+        return bytes(base).length > 0 ? string(abi.encodePacked(base, tokenId.toString())) : "";
     }
 
     function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) {
-        super._burn(tokenId);
+                address owner = KIP17.ownerOf(tokenId);
+
+        _beforeTokenTransfer(owner, address(0), tokenId);
+
+        // Clear approvals
+        _approve(address(0), tokenId);
+
+        _balances[owner] -= 1;
+        delete _owners[tokenId];
+
+        emit Transfer(owner, address(0), tokenId);
+
+        _afterTokenTransfer(owner, address(0), tokenId);
+
+        if (bytes(_tokenURIs[tokenId]).length != 0) {
+            delete _tokenURIs[tokenId];
+        }
     }
 }
