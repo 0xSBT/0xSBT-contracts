@@ -2,17 +2,34 @@
 pragma solidity ^0.8.1;
 
 interface ITreasury {
+  struct Withdraw {
+    address token;
+    uint256 amount;
+    uint256 voteId;
+    bool withdrawn;
+  }
 
-    struct Withdraw {
-        address token;
-        uint256 amount;
-        uint256 voteId;
-        bool withdrawn;
-    }
+  function withdrawFund(
+    address token,
+    address receiver,
+    uint256 amount
+  ) external;
 
-    function makeVoteForWithdraw(string memory agenda, address token, uint256 amount) external;
+  function swapTokenUsingPangea(
+    address inToken,
+    address outToken,
+    uint256 amount
+  ) external;
 
-    function withdrawWithVote(uint256 order, address receiver) external;
+  function swapTokenUsingKlayswap(
+    address inToken,
+    address outToken,
+    uint256 amount
+  ) external;
 
-    function emergencyWithdraw(address token, address receiver, uint256 amount) external;
+  function addLiquidityInKlayswap(address tokenA, address tokenB) external;
+
+  function claimRewardAndSwap(address token) external;
+
+  function removeLiquidityAndZap(address pool, address tokenToZap) external;
 }

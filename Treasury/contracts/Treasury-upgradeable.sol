@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.1;
 
-import "./interfaces/IVoting.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IPoolRouter.sol"; // Pangea swap
 import "./interfaces/IConcentratedLiquidityPoolFactory.sol";
@@ -9,17 +8,16 @@ import "./interfaces/IConcentratedLiquidityPool.sol";
 import "./interfaces/IKSP.sol"; // Klayswap
 import "./interfaces/IKSLP.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@klaytn/contracts/KIP/token/KIP17/extensions/IKIP17Enumerable.sol";
 import "@klaytn/contracts/KIP/token/KIP7/IKIP7.sol";
 
-contract Treasury is Ownable, ITreasury {
+contract Treasury is OwnableUpgradeable, ITreasury {
   using SafeMath for uint256;
 
-  uint256 private withdrawOrder = 0;
+  uint256 private withdrawOrder;
 
   IKIP17Enumerable public governToken;
-  IVoting public voteContract;
   IPoolRouter public pangeaRouter;
   IConcentratedLiquidityPoolFactory public pangeaPoolFactory;
   IKSP public ksp;
@@ -28,19 +26,21 @@ contract Treasury is Ownable, ITreasury {
   mapping(address => bool) public whiteListToken;
   address[] public investingPool;
 
-  constructor(
+  function initialize(
     address _governToken,
-    address _voteContract,
     address _ksp,
     address _pangeaPoolRouter,
     address _pangeaPoolFactory
-  ) {
+  ) public initializer {
+    __Ownable_init();
+
+    withdrawOrder = 0;
+
     governToken = IKIP17Enumerable(_governToken);
-    voteContract = IVoting(_voteContract);
-    ksp = IKSP(_ksp);
-    IKIP7(ksp).approve(ksp, uint256(-1));
     pangeaRouter = IPoolRouter(_pangeaPoolRouter);
     pangeaPoolFactory = IConcentratedLiquidityPoolFactory(_pangeaPoolFactory);
+    ksp = IKSP(_ksp);
+    IKIP7(ksp).approve(ksp, uint256(-1));
   }
 
   receive() external payable {}
@@ -144,7 +144,6 @@ contract Treasury is Ownable, ITreasury {
     swapTokenUsingKlayswap(address(ksp), token, balanceOfToken(ksp));
   }
 
-  // Pool is in Klayswap
   function removeLiquidityAndZap(address pool, address tokenToZap) public whiteList(tokenToZap) onlyOwner {
     require(balanceOfToken(pool) != 0, "We don't have input LP token");
 
@@ -181,6 +180,8 @@ contract Treasury is Ownable, ITreasury {
     }
   }
 
+  /////////// UTILS ///////////
+
   function approveWhenNeeded(
     address token,
     address to,
@@ -208,5 +209,29 @@ contract Treasury is Ownable, ITreasury {
 
   function balanceOfToken(address token) internal view returns (uint256) {
     return IKIP7(token).balanceOf(address(this));
+  }
+
+  /////////// PROXY ///////////
+
+  function execute(
+    address _to,
+    uint256 _value,
+    bytes calldata _data
+  ) external onlyByOwnGov returns (bool, bytes memory) {
+    (bool success, bytes memory result) = _to.call{ value: _value }(_data);
+    // require(success, "execute failed");
+    require(success, success ? "" : _getRevertMsg(result));
+    return (success, result);
+  }
+
+  function _getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
+    // If the _res length is less than 68, then the transaction failed silently (without a revert message)
+    if (_returnData.length < 68) return "Governance::timelock::executeTransaction: Transaction execution reverted.";
+
+    assembly {
+      // Slice the sighash.
+      _returnData := add(_returnData, 0x04)
+    }
+    return abi.decode(_returnData, (string)); // All that remains is the revert string
   }
 }
