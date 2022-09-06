@@ -13,16 +13,24 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
 
   Counters.Counter private _tokenIdCounter;
   uint256 private _mintPriceInKlay;
-  uint256 constant fee = 30; // 3%
 
-  address public company;
+  struct voteContents {
+    uint256 culture;
+    uint256 transparency;
+    uint267 authority;
+  }
+  
+  mapping(address => voteContents) public scores;
+  mapping(address => mapping(dao => voteContents)) public committees;
+  mapping(address => bool) public listedDaos;
+
+  uint256[] public daos;
 
   constructor(
     string memory name,
     string memory symbol,
-    address company_
   ) KIP17(name, symbol) {
-    company = company_;
+    _mintPriceInKlay = 0; // 0 klay initially.
   }
 
   function setMintPrice(uint256 mintPrice) public onlyOwner {
@@ -34,9 +42,45 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
     uint256 tokenId = _tokenIdCounter.current();
     _tokenIdCounter.increment();
-    payable(company).transfer(msg.value);
     _safeMint(to, tokenId);
     _setTokenURI(tokenId, _tokenURI);
+  }
+
+  function vote(address dao, uint256[3] memory voteScore) external {
+    require (balanceOf(msg.sender) != 0, "You have no right to vote");
+    require (listedDaos[dao] == true, "not a listed dao");
+
+    voteContents memory newVote = voteContents {
+        voteScore[0],
+        voteScore[1],
+        voteScore[2]
+    };
+
+    committees[msg.sender][dao] = newVote;
+    scores[dao] = newVote;
+  }
+
+  function manageDao(address dao, bool support) external {
+    require (msg.sender == owner || balanceOf(msg.sender) != 0, "You can't manage daos");
+
+    if (support) {
+        listedDaos[dao] = true;
+        daos.push(dao);
+    } else {
+        listedDaos[dao] = false;
+    }
+  }
+
+  function viewScores(address dao) public view returns (uint256[3] memory) {
+    uint256 totalVoter = totalSupply();
+
+    uint256[3] memory scores;
+
+    scores[0] = scores[dao].culture / totalVoter;
+    scores[1] = scores[dao].transparency / totalVoter;
+    scores[2] = scores[dao].authority / totalVoter;
+
+    return scores;
   }
 
   function _beforeTokenTransfer(
@@ -82,6 +126,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
   function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) {
     address owner = KIP17.ownerOf(tokenId);
 
+    clearVoteHistory(owner);
+
     _beforeTokenTransfer(owner, address(0), tokenId);
 
     // Clear approvals
@@ -97,5 +143,19 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     if (bytes(_tokenURIs[tokenId]).length != 0) {
       delete _tokenURIs[tokenId];
     }
+  }
+
+  function clearVoteHistory(address owner) internal {
+    for (uint256 i = 0; i < daos.length; i++) {
+        if (listedDaos[daos[i]]) {
+            scores[daos[i]].culture -= committees[owner][daos[i]].culture;
+            scores[daos[i]].transparency -= committees[owner][daos[i]].transparency;
+            scores[daos[i]].authority -= committees[owner][daos[i]].authority;
+        }
+    }
+  }
+
+  function withdrawKlay() external onlyOwner {
+    payable(msg.sender).transfer(payable(address(this)).balance);
   }
 }
