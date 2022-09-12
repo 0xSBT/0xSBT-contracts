@@ -38,7 +38,7 @@ contract Treasury is Ownable, ITreasury {
     governToken = IKIP17Enumerable(_governToken);
     voteContract = IVoting(_voteContract);
     ksp = IKSP(_ksp);
-    IKIP7(ksp).approve(ksp, uint256(-1));
+    IKIP7(_ksp).approve(_ksp, type(uint256).max);
     pangeaRouter = IPoolRouter(_pangeaPoolRouter);
     pangeaPoolFactory = IConcentratedLiquidityPoolFactory(_pangeaPoolFactory);
   }
@@ -69,13 +69,20 @@ contract Treasury is Ownable, ITreasury {
   ) public whiteList(outToken) onlyOwner {
     require(balanceOfToken(inToken) >= amount, "Not enough token to swap");
 
-    if (IKIP7(inToken).allowance(address(pangeaRouter) < amount)) {
+    if (IKIP7(inToken).allowance(address(this), address(pangeaRouter)) < amount) {
       approveWhenNeeded(inToken, address(pangeaRouter), amount);
     }
 
     address pool = pangeaPoolFactory.getPools(inToken, outToken, 0, 1)[0];
 
-    ExactInputSingleParams memory newParams = ExactInputSingleParams({ tokenIn: inToken, amountIn: amount, amountOutMinimum: 0, pool: pool, to: outToken, unwrap: false });
+    IPoolRouter.ExactInputSingleParams memory newParams = IPoolRouter.ExactInputSingleParams({
+      tokenIn: inToken,
+      amountIn: amount,
+      amountOutMinimum: 0,
+      pool: pool,
+      to: outToken,
+      unwrap: false
+    });
 
     pangeaRouter.exactInputSingle(newParams);
   }
@@ -87,11 +94,9 @@ contract Treasury is Ownable, ITreasury {
   ) public whiteList(outToken) onlyOwner {
     require(balanceOfToken(inToken) >= amount, "Not enough token to swap");
 
-    if (IKIP7(inToken).allowance(address(ksp) < amount)) {
+    if (IKIP7(inToken).allowance(address(this), address(ksp)) < amount) {
       approveWhenNeeded(inToken, address(ksp), amount);
     }
-
-    address pool = ksp.tokenToPool(tokenA, tokenB);
 
     address[] memory path = new address[](0);
 
@@ -110,12 +115,12 @@ contract Treasury is Ownable, ITreasury {
 
     address pool = ksp.tokenToPool(tokenA, tokenB);
 
-    if (IKIP7(tokenA).allowance(pool) == 0) {
-      approveWhenNeeded(tokenA, pool, uint256(-1));
+    if (IKIP7(tokenA).allowance(address(this), pool) == 0) {
+      approveWhenNeeded(tokenA, pool, type(uint256).max);
     }
 
-    if (IKIP7(tokenB).allowance(pool) == 0) {
-      approveWhenNeeded(tokenB, pool, uint256(-1));
+    if (IKIP7(tokenB).allowance(address(this), pool) == 0) {
+      approveWhenNeeded(tokenB, pool, type(uint256).max);
     }
 
     if (amountA > 0 && amountB > 0) {
@@ -141,7 +146,7 @@ contract Treasury is Ownable, ITreasury {
       IKSLP(investingPool[i]).claimReward();
     }
 
-    swapTokenUsingKlayswap(address(ksp), token, balanceOfToken(ksp));
+    swapTokenUsingKlayswap(address(ksp), token, balanceOfToken(address(ksp)));
   }
 
   // Pool is in Klayswap
@@ -150,8 +155,8 @@ contract Treasury is Ownable, ITreasury {
 
     IKSLP(pool).removeLiquidity(balanceOfToken(pool));
 
-    address tokenA = IKSLP(pool).tokenA;
-    address tokenB = IKSLP(pool).tokenB;
+    address tokenA = IKSLP(pool).tokenA();
+    address tokenB = IKSLP(pool).tokenB();
 
     address pangeaPool = pangeaPoolFactory.getPools(tokenA, tokenB, 0, 1)[0];
 
@@ -194,8 +199,6 @@ contract Treasury is Ownable, ITreasury {
     uint256 amount,
     address pool
   ) internal view returns (uint256) {
-    require(token == tokenA || token == tokenB);
-
     uint256 pos = IKSLP(pool).estimatePos(token, amount);
     uint256 neg = IKSLP(pool).estimateNeg(token, amount);
 

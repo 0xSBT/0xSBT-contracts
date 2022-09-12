@@ -9,7 +9,7 @@ import "@klaytn/contracts/KIP/token/KIP17/extensions/IKIP17Enumerable.sol";
 contract Voting is OwnableUpgradeable, IVoting {
   using SafeMath for uint256;
 
-  IERC721Enumerable public governToken;
+  IKIP17Enumerable public governToken;
 
   uint256 private constant MinVotePeriod = 1 days;
   uint256 private constant MaxVotePeriod = 15 days;
@@ -40,7 +40,7 @@ contract Voting is OwnableUpgradeable, IVoting {
 
     __Ownable_init();
 
-    governToken = IERC721Enumerable(_governToken);
+    governToken = IKIP17Enumerable(_governToken);
     proposers[msg.sender] = true;
     managers[msg.sender] = true;
     voteCount = 0;

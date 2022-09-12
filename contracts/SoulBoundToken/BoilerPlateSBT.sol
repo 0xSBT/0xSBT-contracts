@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@klaytn/contracts@1.0.1/KIP/token/KIP17/KIP17.sol";
-import "@klaytn/contracts@1.0.1/KIP/token/KIP17/extensions/KIP17Enumerable.sol";
-import "@klaytn/contracts@1.0.1/KIP/token/KIP17/extensions/KIP17URIStorage.sol";
-import "@klaytn/contracts@1.0.1/access/Ownable.sol";
-import "@klaytn/contracts@1.0.1/utils/Counters.sol";
+import "@klaytn/contracts/KIP/token/KIP17/KIP17.sol";
+import "@klaytn/contracts/KIP/token/KIP17/extensions/KIP17Enumerable.sol";
+import "@klaytn/contracts/KIP/token/KIP17/extensions/KIP17URIStorage.sol";
+import "@klaytn/contracts/access/Ownable.sol";
+import "@klaytn/contracts/utils/Counters.sol";
 
 contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   using Counters for Counters.Counter;
@@ -83,7 +83,9 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     address to,
     uint256 tokenId
   ) internal override(KIP17, KIP17Enumerable) {
-    require(from == address(0), "Err: token is SOUL BOUND");
+    if (to != address(0)) {
+      require(from == address(0), "Err: token is SOUL BOUND");
+    }
     KIP17Enumerable._beforeTokenTransfer(from, to, tokenId);
   }
 
@@ -104,6 +106,10 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     require(_exists(tokenId), "KIP17URIStorage: URI query for nonexistent token");
 
     return KIP17URIStorage.tokenURI(tokenId);
+  }
+
+  function burn(uint256 tokenId) public onlyOwner {
+    _burn(tokenId);
   }
 
   function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) onlyOwner {

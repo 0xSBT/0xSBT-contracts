@@ -9,7 +9,7 @@ import "@klaytn/contracts/KIP/token/KIP17/extensions/IKIP17Enumerable.sol";
 contract Voting is Ownable, IVoting {
   using SafeMath for uint256;
 
-  IERC721Enumerable public governToken;
+  IKIP17Enumerable public governToken;
 
   uint256 public voteCount = 0; //Number of votes in contract
   uint256 public votePeriod = 7 days;
@@ -38,7 +38,7 @@ contract Voting is Ownable, IVoting {
   constructor(address _governToken) {
     require(_governToken != address(0), "Zero address");
 
-    governToken = IERC721Enumerable(_governToken);
+    governToken = IKIP17Enumerable(_governToken);
     proposers[msg.sender] = true;
     managers[msg.sender] = true;
   }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.1;
+pragma solidity ^0.8.0;
 
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IPoolRouter.sol"; // Pangea swap
@@ -40,7 +40,7 @@ contract Treasury is OwnableUpgradeable, ITreasury {
     pangeaRouter = IPoolRouter(_pangeaPoolRouter);
     pangeaPoolFactory = IConcentratedLiquidityPoolFactory(_pangeaPoolFactory);
     ksp = IKSP(_ksp);
-    IKIP7(ksp).approve(ksp, uint256(-1));
+    IKIP7(_ksp).approve(_ksp, type(uint256).max);
   }
 
   receive() external payable {}
@@ -69,15 +69,13 @@ contract Treasury is OwnableUpgradeable, ITreasury {
   ) public whiteList(outToken) onlyOwner {
     require(balanceOfToken(inToken) >= amount, "Not enough token to swap");
 
-    if (IKIP7(inToken).allowance(address(pangeaRouter) < amount)) {
+    if (IKIP7(inToken).allowance(address(this), address(pangeaRouter)) < amount) {
       approveWhenNeeded(inToken, address(pangeaRouter), amount);
     }
 
     address pool = pangeaPoolFactory.getPools(inToken, outToken, 0, 1)[0];
 
-    ExactInputSingleParams memory newParams = ExactInputSingleParams({ tokenIn: inToken, amountIn: amount, amountOutMinimum: 0, pool: pool, to: outToken, unwrap: false });
-
-    pangeaRouter.exactInputSingle(newParams);
+    pangeaRouter.exactInputSingle(IPoolRouter.ExactInputSingleParams({ tokenIn: inToken, amountIn: amount, amountOutMinimum: 0, pool: pool, to: outToken, unwrap: false }));
   }
 
   function swapTokenUsingKlayswap(
@@ -87,11 +85,11 @@ contract Treasury is OwnableUpgradeable, ITreasury {
   ) public whiteList(outToken) onlyOwner {
     require(balanceOfToken(inToken) >= amount, "Not enough token to swap");
 
-    if (IKIP7(inToken).allowance(address(ksp) < amount)) {
+    if (IKIP7(inToken).allowance(address(this), address(ksp)) < amount) {
       approveWhenNeeded(inToken, address(ksp), amount);
     }
 
-    address pool = ksp.tokenToPool(tokenA, tokenB);
+    address pool = ksp.tokenToPool(inToken, outToken);
 
     address[] memory path = new address[](0);
 
@@ -110,12 +108,12 @@ contract Treasury is OwnableUpgradeable, ITreasury {
 
     address pool = ksp.tokenToPool(tokenA, tokenB);
 
-    if (IKIP7(tokenA).allowance(pool) == 0) {
-      approveWhenNeeded(tokenA, pool, uint256(-1));
+    if (IKIP7(tokenA).allowance(address(this), pool) == 0) {
+      approveWhenNeeded(tokenA, pool, type(uint256).max);
     }
 
-    if (IKIP7(tokenB).allowance(pool) == 0) {
-      approveWhenNeeded(tokenB, pool, uint256(-1));
+    if (IKIP7(tokenB).allowance(address(this), pool) == 0) {
+      approveWhenNeeded(tokenB, pool, type(uint256).max);
     }
 
     if (amountA > 0 && amountB > 0) {
@@ -141,7 +139,7 @@ contract Treasury is OwnableUpgradeable, ITreasury {
       IKSLP(investingPool[i]).claimReward();
     }
 
-    swapTokenUsingKlayswap(address(ksp), token, balanceOfToken(ksp));
+    swapTokenUsingKlayswap(address(ksp), token, balanceOfToken(address(ksp)));
   }
 
   function removeLiquidityAndZap(address pool, address tokenToZap) public whiteList(tokenToZap) onlyOwner {
@@ -149,8 +147,8 @@ contract Treasury is OwnableUpgradeable, ITreasury {
 
     IKSLP(pool).removeLiquidity(balanceOfToken(pool));
 
-    address tokenA = IKSLP(pool).tokenA;
-    address tokenB = IKSLP(pool).tokenB;
+    address tokenA = IKSLP(pool).tokenA();
+    address tokenB = IKSLP(pool).tokenB();
 
     address pangeaPool = pangeaPoolFactory.getPools(tokenA, tokenB, 0, 1)[0];
 
@@ -195,8 +193,6 @@ contract Treasury is OwnableUpgradeable, ITreasury {
     uint256 amount,
     address pool
   ) internal view returns (uint256) {
-    require(token == tokenA || token == tokenB);
-
     uint256 pos = IKSLP(pool).estimatePos(token, amount);
     uint256 neg = IKSLP(pool).estimateNeg(token, amount);
 
@@ -209,29 +205,5 @@ contract Treasury is OwnableUpgradeable, ITreasury {
 
   function balanceOfToken(address token) internal view returns (uint256) {
     return IKIP7(token).balanceOf(address(this));
-  }
-
-  /////////// PROXY ///////////
-
-  function execute(
-    address _to,
-    uint256 _value,
-    bytes calldata _data
-  ) external onlyByOwnGov returns (bool, bytes memory) {
-    (bool success, bytes memory result) = _to.call{ value: _value }(_data);
-    // require(success, "execute failed");
-    require(success, success ? "" : _getRevertMsg(result));
-    return (success, result);
-  }
-
-  function _getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
-    // If the _res length is less than 68, then the transaction failed silently (without a revert message)
-    if (_returnData.length < 68) return "Governance::timelock::executeTransaction: Transaction execution reverted.";
-
-    assembly {
-      // Slice the sighash.
-      _returnData := add(_returnData, 0x04)
-    }
-    return abi.decode(_returnData, (string)); // All that remains is the revert string
   }
 }
