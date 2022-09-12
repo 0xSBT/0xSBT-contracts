@@ -3,12 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@klaytn/contracts@1.0.1/KIP/token/KIP17/KIP17.sol";
 import "@klaytn/contracts@1.0.1/KIP/token/KIP17/extensions/KIP17Enumerable.sol";
-import "@klaytn/contracts@1.0.1/KIP/token/KIP17/extensions/KIP17Pausable.sol";
 import "@klaytn/contracts@1.0.1/KIP/token/KIP17/extensions/KIP17URIStorage.sol";
 import "@klaytn/contracts@1.0.1/access/Ownable.sol";
 import "@klaytn/contracts@1.0.1/utils/Counters.sol";
 
-contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17URIStorage {
+contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   using Counters for Counters.Counter;
 
   Counters.Counter private _tokenIdCounter;
@@ -83,9 +82,9 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     address from,
     address to,
     uint256 tokenId
-  ) internal override(KIP17, KIP17Enumerable, KIP17Pausable) {
+  ) internal override(KIP17, KIP17Enumerable) {
     require(from == address(0), "Err: token is SOUL BOUND");
-    require(!paused(), "KIP17Pausable: token transfer while paused");
+    KIP17Enumerable._beforeTokenTransfer(from, to, tokenId);
   }
 
   function _afterTokenTransfer(
@@ -97,48 +96,22 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
   }
 
   // add "interfaceId == type(ISoulBoundToken).interfaceId" after create interface in ISoulBoundToken.sol
-  function supportsInterface(bytes4 interfaceId) public view override(KIP17, KIP17Enumerable, KIP17Pausable) returns (bool) {
-    return KIP17.supportsInterface(interfaceId) || KIP17Enumerable.supportsInterface(interfaceId) || KIP17Pausable.supportsInterface(interfaceId);
+  function supportsInterface(bytes4 interfaceId) public view override(KIP17, KIP17Enumerable) returns (bool) {
+    return KIP17.supportsInterface(interfaceId) || KIP17Enumerable.supportsInterface(interfaceId);
   }
 
   function tokenURI(uint256 tokenId) public view override(KIP17, KIP17URIStorage) returns (string memory) {
     require(_exists(tokenId), "KIP17URIStorage: URI query for nonexistent token");
 
-    string memory _tokenURI = _tokenURIs[tokenId];
-    string memory base = _baseURI();
-
-    // If there is no base URI, return the token URI.
-    if (bytes(base).length == 0) {
-      return _tokenURI;
-    }
-    // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-    if (bytes(_tokenURI).length > 0) {
-      return string(abi.encodePacked(base, _tokenURI));
-    }
-
-    return bytes(base).length > 0 ? string(abi.encodePacked(base, tokenId.toString())) : "";
+    return KIP17URIStorage.tokenURI(tokenId);
   }
 
-  function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) {
+  function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) onlyOwner {
     address owner = KIP17.ownerOf(tokenId);
 
     clearVoteHistory(owner);
 
-    _beforeTokenTransfer(owner, address(0), tokenId);
-
-    // Clear approvals
-    _approve(address(0), tokenId);
-
-    _balances[owner] -= 1;
-    delete _owners[tokenId];
-
-    emit Transfer(owner, address(0), tokenId);
-
-    _afterTokenTransfer(owner, address(0), tokenId);
-
-    if (bytes(_tokenURIs[tokenId]).length != 0) {
-      delete _tokenURIs[tokenId];
-    }
+    KIP17URIStorage._burn(tokenId);
   }
 
   function clearVoteHistory(address owner) internal {
