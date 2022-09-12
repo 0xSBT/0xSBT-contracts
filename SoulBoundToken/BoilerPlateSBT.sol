@@ -17,19 +17,17 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
   struct voteContents {
     uint256 culture;
     uint256 transparency;
-    uint267 authority;
+    uint256 authority;
   }
-  
+
   mapping(address => voteContents) public scores;
-  mapping(address => mapping(dao => voteContents)) public committees;
+  mapping(address => mapping(address => voteContents)) public committees;
+  mapping(address => uint256) public totalVoter;
   mapping(address => bool) public listedDaos;
 
-  uint256[] public daos;
+  address[] public daos;
 
-  constructor(
-    string memory name,
-    string memory symbol,
-  ) KIP17(name, symbol) {
+  constructor(string memory name, string memory symbol) KIP17(name, symbol) {
     _mintPriceInKlay = 0; // 0 klay initially.
   }
 
@@ -37,7 +35,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
     _mintPriceInKlay = mintPrice;
   }
 
-  // implement for minting test
+  // implement for minting test.
+  // Initially, it is ownable function.
   function safeMintWithTokenURI(address to, string memory _tokenURI) external payable {
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
     uint256 tokenId = _tokenIdCounter.current();
@@ -47,40 +46,37 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
   }
 
   function vote(address dao, uint256[3] memory voteScore) external {
-    require (balanceOf(msg.sender) != 0, "You have no right to vote");
-    require (listedDaos[dao] == true, "not a listed dao");
+    require(balanceOf(msg.sender) != 0, "You have no right to vote");
+    require(listedDaos[dao] == true, "not a listed dao");
 
-    voteContents memory newVote = voteContents {
-        voteScore[0],
-        voteScore[1],
-        voteScore[2]
-    };
+    voteContents memory newVote = voteContents({ culture: voteScore[0], transparency: voteScore[1], authority: voteScore[2] });
 
     committees[msg.sender][dao] = newVote;
-    scores[dao] = newVote;
+    scores[dao].culture += voteScore[0];
+    scores[dao].transparency += voteScore[1];
+    scores[dao].authority += voteScore[2];
+    totalVoter[dao] += 1;
   }
 
-  function manageDao(address dao, bool support) external {
-    require (msg.sender == owner || balanceOf(msg.sender) != 0, "You can't manage daos");
-
+  function manageDao(address dao, bool support) external onlyOwner {
     if (support) {
-        listedDaos[dao] = true;
-        daos.push(dao);
+      listedDaos[dao] = true;
+      daos.push(dao);
     } else {
-        listedDaos[dao] = false;
+      listedDaos[dao] = false;
     }
   }
 
-  function viewScores(address dao) public view returns (uint256[3] memory) {
-    uint256 totalVoter = totalSupply();
+  function viewScore(address dao) public view returns (uint256[] memory) {
+    uint256 totalVoterInfo = totalVoter[dao];
 
-    uint256[3] memory scores;
+    uint256[] memory score = new uint256[](3);
 
-    scores[0] = scores[dao].culture / totalVoter;
-    scores[1] = scores[dao].transparency / totalVoter;
-    scores[2] = scores[dao].authority / totalVoter;
+    score[0] = scores[dao].culture / totalVoterInfo;
+    score[1] = scores[dao].transparency / totalVoterInfo;
+    score[2] = scores[dao].authority / totalVoterInfo;
 
-    return scores;
+    return score;
   }
 
   function _beforeTokenTransfer(
@@ -147,11 +143,12 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17Pausable, KIP17
 
   function clearVoteHistory(address owner) internal {
     for (uint256 i = 0; i < daos.length; i++) {
-        if (listedDaos[daos[i]]) {
-            scores[daos[i]].culture -= committees[owner][daos[i]].culture;
-            scores[daos[i]].transparency -= committees[owner][daos[i]].transparency;
-            scores[daos[i]].authority -= committees[owner][daos[i]].authority;
-        }
+      if (listedDaos[daos[i]]) {
+        scores[daos[i]].culture -= committees[owner][daos[i]].culture;
+        scores[daos[i]].transparency -= committees[owner][daos[i]].transparency;
+        scores[daos[i]].authority -= committees[owner][daos[i]].authority;
+        totalVoter[daos[i]] -= 1;
+      }
     }
   }
 
