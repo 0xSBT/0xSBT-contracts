@@ -56,18 +56,18 @@ describe("SoulBoundToken", function () {
 
     it("vote for alice dao", async function () {
       const { alice, bob, charlie, SBT } = fixture;
-      await SBT.connect(alice).vote(alice.address, [9, 10, 7]);
-      await SBT.connect(bob).vote(alice.address, [8, 9, 6]);
-      await SBT.connect(charlie).vote(alice.address, [7, 8, 5]);
+      await SBT.connect(alice).vote(alice.address, [90, 100, 70]);
+      await SBT.connect(bob).vote(alice.address, [80, 90, 60]);
+      await SBT.connect(charlie).vote(alice.address, [70, 80, 50]);
 
       console.log(await SBT.viewScore(alice.address));
     });
 
     it("vote cancel should work", async function () {
       const { alice, bob, charlie, SBT } = fixture;
-      await SBT.connect(alice).vote(alice.address, [10, 10, 10]);
-      await SBT.connect(bob).vote(alice.address, [10, 10, 10]);
-      await SBT.connect(charlie).vote(alice.address, [5, 5, 5]);
+      await SBT.connect(alice).vote(alice.address, [100, 100, 100]);
+      await SBT.connect(bob).vote(alice.address, [100, 100, 100]);
+      await SBT.connect(charlie).vote(alice.address, [50, 50, 50]);
 
       console.log(await SBT.viewScore(alice.address));
 

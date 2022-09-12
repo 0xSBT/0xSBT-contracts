@@ -10,6 +10,8 @@ import "@klaytn/contracts/utils/Counters.sol";
 contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   using Counters for Counters.Counter;
 
+  uint256 constant MAX_SCORE = 100;
+
   Counters.Counter private _tokenIdCounter;
   uint256 private _mintPriceInKlay;
 
@@ -47,6 +49,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   function vote(address dao, uint256[3] memory voteScore) external {
     require(balanceOf(msg.sender) != 0, "You have no right to vote");
     require(listedDaos[dao] == true, "not a listed dao");
+    require(voteScore[0] <= MAX_SCORE && voteScore[1] < MAX_SCORE && voteScore[2] < MAX_SCORE, "Score is not valid");
 
     voteContents memory newVote = voteContents({ culture: voteScore[0], transparency: voteScore[1], authority: voteScore[2] });
 
