@@ -33,7 +33,6 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
 
   constructor(string memory name, string memory symbol) KIP17(name, symbol) {
     _mintPriceInKlay = 0; // 0 klay initially.
-    _tokenIdCounter.increment();
   }
 
   function setMintPrice(uint256 mintPrice) public onlyOwner {
