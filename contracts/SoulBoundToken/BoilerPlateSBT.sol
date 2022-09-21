@@ -9,11 +9,14 @@ import "@klaytn/contracts/utils/Counters.sol";
 
 contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   using Counters for Counters.Counter;
+  using Strings for uint256;
 
   uint256 constant MAX_SCORE = 100;
 
   Counters.Counter private _tokenIdCounter;
   uint256 private _mintPriceInKlay;
+  string baseURIFront;
+  string baseURIBack;
 
   struct voteContents {
     uint256 culture;
@@ -35,13 +38,25 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   function setMintPrice(uint256 mintPrice) public onlyOwner {
     _mintPriceInKlay = mintPrice;
   }
+  
+  function setbaseURI(string memory front, string memory back) public onlyOwner {
+      baseURIFront = front;
+      baseURIBack = back;
+  }
+  
+  function safeMint(address to) external payable {
+    require(msg.value == _mintPriceInKlay, "minting price is not valid");
+    _tokenIdCounter.increment();
+    uint256 tokenId = _tokenIdCounter.current();
+    _safeMint(to, tokenId);
+    _setTokenURI(tokenId, tokenURI(tokenId));
+  }
 
-  // implement for minting test.
   // Initially, it is ownable function.
   function safeMintWithTokenURI(address to, string memory _tokenURI) external payable {
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
-    uint256 tokenId = _tokenIdCounter.current();
     _tokenIdCounter.increment();
+    uint256 tokenId = _tokenIdCounter.current();
     _safeMint(to, tokenId);
     _setTokenURI(tokenId, _tokenURI);
   }
@@ -107,8 +122,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
 
   function tokenURI(uint256 tokenId) public view override(KIP17, KIP17URIStorage) returns (string memory) {
     require(_exists(tokenId), "KIP17URIStorage: URI query for nonexistent token");
-
-    return KIP17URIStorage.tokenURI(tokenId);
+    return string(abi.encodePacked(baseURIFront, Strings.toString(tokenId), baseURIBack));
   }
 
   function burn(uint256 tokenId) public onlyOwner {
