@@ -33,17 +33,21 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
 
   constructor(string memory name, string memory symbol) KIP17(name, symbol) {
     _mintPriceInKlay = 0; // 0 klay initially.
+    _tokenIdCounter.increment();
   }
 
   function setMintPrice(uint256 mintPrice) public onlyOwner {
     _mintPriceInKlay = mintPrice;
   }
-  
-  function setbaseURI(string memory front, string memory back) public onlyOwner {
-      baseURIFront = front;
-      baseURIBack = back;
+
+  function setbaseURI(string memory front, string memory back)
+    public
+    onlyOwner
+  {
+    baseURIFront = front;
+    baseURIBack = back;
   }
-  
+
   function safeMint(address to) external payable {
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
     _tokenIdCounter.increment();
@@ -53,7 +57,10 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   }
 
   // Initially, it is ownable function.
-  function safeMintWithTokenURI(address to, string memory _tokenURI) external payable {
+  function safeMintWithTokenURI(address to, string memory _tokenURI)
+    external
+    payable
+  {
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
     _tokenIdCounter.increment();
     uint256 tokenId = _tokenIdCounter.current();
@@ -64,9 +71,18 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   function vote(address dao, uint256[3] memory voteScore) external {
     require(balanceOf(msg.sender) != 0, "You have no right to vote");
     require(listedDaos[dao] == true, "not a listed dao");
-    require(voteScore[0] <= MAX_SCORE && voteScore[1] < MAX_SCORE && voteScore[2] < MAX_SCORE, "Score is not valid");
+    require(
+      voteScore[0] <= MAX_SCORE &&
+        voteScore[1] < MAX_SCORE &&
+        voteScore[2] < MAX_SCORE,
+      "Score is not valid"
+    );
 
-    voteContents memory newVote = voteContents({ culture: voteScore[0], transparency: voteScore[1], authority: voteScore[2] });
+    voteContents memory newVote = voteContents({
+      culture: voteScore[0],
+      transparency: voteScore[1],
+      authority: voteScore[2]
+    });
 
     committees[msg.sender][dao] = newVote;
     scores[dao].culture += voteScore[0];
@@ -116,20 +132,42 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   }
 
   // add "interfaceId == type(ISoulBoundToken).interfaceId" after create interface in ISoulBoundToken.sol
-  function supportsInterface(bytes4 interfaceId) public view override(KIP17, KIP17Enumerable) returns (bool) {
-    return KIP17.supportsInterface(interfaceId) || KIP17Enumerable.supportsInterface(interfaceId);
+  function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override(KIP17, KIP17Enumerable)
+    returns (bool)
+  {
+    return
+      KIP17.supportsInterface(interfaceId) ||
+      KIP17Enumerable.supportsInterface(interfaceId);
   }
 
-  function tokenURI(uint256 tokenId) public view override(KIP17, KIP17URIStorage) returns (string memory) {
-    require(_exists(tokenId), "KIP17URIStorage: URI query for nonexistent token");
-    return string(abi.encodePacked(baseURIFront, Strings.toString(tokenId), baseURIBack));
+  function tokenURI(uint256 tokenId)
+    public
+    view
+    override(KIP17, KIP17URIStorage)
+    returns (string memory)
+  {
+    require(
+      _exists(tokenId),
+      "KIP17URIStorage: URI query for nonexistent token"
+    );
+    return
+      string(
+        abi.encodePacked(baseURIFront, Strings.toString(tokenId), baseURIBack)
+      );
   }
 
   function burn(uint256 tokenId) public onlyOwner {
     _burn(tokenId);
   }
 
-  function _burn(uint256 tokenId) internal override(KIP17, KIP17URIStorage) onlyOwner {
+  function _burn(uint256 tokenId)
+    internal
+    override(KIP17, KIP17URIStorage)
+    onlyOwner
+  {
     address owner = KIP17.ownerOf(tokenId);
 
     clearVoteHistory(owner);
