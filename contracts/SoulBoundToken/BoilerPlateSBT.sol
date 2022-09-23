@@ -21,7 +21,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
   struct voteContents {
     uint256 culture;
     uint256 transparency;
-    uint256 authority;
+    uint256 decentalized;
   }
 
   mapping(address => voteContents) public scores;
@@ -80,13 +80,13 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     voteContents memory newVote = voteContents({
       culture: voteScore[0],
       transparency: voteScore[1],
-      authority: voteScore[2]
+      decentalized: voteScore[2]
     });
 
     committees[msg.sender][dao] = newVote;
     scores[dao].culture += voteScore[0];
     scores[dao].transparency += voteScore[1];
-    scores[dao].authority += voteScore[2];
+    scores[dao].decentalized += voteScore[2];
     totalVoter[dao] += 1;
   }
 
@@ -106,7 +106,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
 
     score[0] = scores[dao].culture / totalVoterInfo;
     score[1] = scores[dao].transparency / totalVoterInfo;
-    score[2] = scores[dao].authority / totalVoterInfo;
+    score[2] = scores[dao].decentalized / totalVoterInfo;
 
     return score;
   }
@@ -179,7 +179,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
       if (listedDaos[daos[i]]) {
         scores[daos[i]].culture -= committees[owner][daos[i]].culture;
         scores[daos[i]].transparency -= committees[owner][daos[i]].transparency;
-        scores[daos[i]].authority -= committees[owner][daos[i]].authority;
+        scores[daos[i]].decentalized -= committees[owner][daos[i]].decentalized;
         totalVoter[daos[i]] -= 1;
       }
     }
