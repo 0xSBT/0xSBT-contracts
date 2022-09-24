@@ -72,8 +72,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     require(listedDaos[dao] == true, "not a listed dao");
     require(
       voteScore[0] <= MAX_SCORE &&
-        voteScore[1] < MAX_SCORE &&
-        voteScore[2] < MAX_SCORE,
+        voteScore[1] <= MAX_SCORE &&
+        voteScore[2] <= MAX_SCORE,
       "Score is not valid"
     );
 
@@ -183,6 +183,11 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
         totalVoter[daos[i]] -= 1;
       }
     }
+  }
+
+  function viewDaos() external view returns (address[] memory) {
+    address[] memory return_data = daos;
+    return return_data;
   }
 
   function withdrawKlay() external onlyOwner {
