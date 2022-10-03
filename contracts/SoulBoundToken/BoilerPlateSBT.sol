@@ -83,11 +83,17 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
       decentalized: voteScore[2]
     });
 
+    if (
+      committees[msg.sender][dao].culture == 0 &&
+      committees[msg.sender][dao].transparency == 0 &&
+      committees[msg.sender][dao].decentalized == 0
+    ) {
+      totalVoter[dao] += 1;
+    }
     committees[msg.sender][dao] = newVote;
     scores[dao].culture += voteScore[0];
     scores[dao].transparency += voteScore[1];
     scores[dao].decentalized += voteScore[2];
-    totalVoter[dao] += 1;
   }
 
   function manageDao(address dao, bool support) external onlyOwner {
