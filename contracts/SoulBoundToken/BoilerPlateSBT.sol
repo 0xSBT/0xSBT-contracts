@@ -47,7 +47,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     baseURIBack = back;
   }
 
-  function safeMint(address to) external payable {
+  function safeMint(address to) external payable onlyOwner {
     require(msg.value == _mintPriceInKlay, "minting price is not valid");
     _tokenIdCounter.increment();
     uint256 tokenId = _tokenIdCounter.current();
