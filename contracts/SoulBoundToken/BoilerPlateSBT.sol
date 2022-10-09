@@ -29,6 +29,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     mapping(address => uint256) public totalVoter;
     mapping(address => bool) public listedDaos;
     mapping(address => string) public twitterIds;
+    mapping(string => address) public twitterIdToAddress;
 
     address[] public daos;
 
@@ -38,10 +39,15 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
 
     function registerTwitterId(string memory twitterId) private {
         twitterIds[msg.sender] = twitterId;
+        twitterIdToAddress[twitterId] = msg.sender;
     }
 
     function getTwitterId(address from) public view returns(string memory) {
         return twitterIds[from];
+    }
+
+    function getAddressFromTwitterId(string memory id) public view returns(address) {
+        return twitterIdToAddress[id];
     }
 
     function setMintPrice(uint256 mintPrice) public onlyOwner {
