@@ -28,7 +28,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     mapping(address => mapping(address => voteContents)) public committees;
     mapping(address => uint256) public totalVoter;
     mapping(address => bool) public listedDaos;
-    mapping(address => string) public twitterIds;
+    mapping(address => string) public addressToTwitterId;
     mapping(string => address) public twitterIdToAddress;
 
     address[] public daos;
@@ -37,13 +37,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
         _mintPriceInKlay = 0; // 0 klay initially.
     }
 
-    function registerTwitterId(string memory twitterId) private {
-        twitterIds[msg.sender] = twitterId;
-        twitterIdToAddress[twitterId] = msg.sender;
-    }
-
     function getTwitterId(address from) public view returns(string memory) {
-        return twitterIds[from];
+        return addressToTwitterId[from];
     }
 
     function getAddressFromTwitterId(string memory id) public view returns(address) {
@@ -62,25 +57,18 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
         baseURIBack = back;
     }
 
-    function safeMint(address to, string memory twitterId) external payable onlyOwner {
-        require(msg.value == _mintPriceInKlay, "minting price is not valid");
+    function safeMint(address to, string memory twitterId) external payable {
+        require(msg.value == _mintPriceInKlay, "Minting price is not valid");
+        require(balanceOf(to) < 1, "One address cannot mint more than two");
+        require(bytes(twitterId).length != 0, "Empty string is not allowed");
+        require(bytes(addressToTwitterId[to]).length == 0, "The address is already registered");
+        require(twitterIdToAddress[twitterId] == address(0x00), "The id is already registered");
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, tokenURI(tokenId));
-        registerTwitterId(twitterId);
-    }
-
-    // Initially, it is ownable function.
-    function safeMintWithTokenURI(address to, string memory _tokenURI)
-        external
-        payable
-    {
-        require(msg.value == _mintPriceInKlay, "minting price is not valid");
-        _tokenIdCounter.increment();
-        uint256 tokenId = _tokenIdCounter.current();
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, _tokenURI);
+        addressToTwitterId[msg.sender] = twitterId;
+        twitterIdToAddress[twitterId] = msg.sender;
     }
 
     function vote(address dao, uint256[3] memory voteScore) external {
