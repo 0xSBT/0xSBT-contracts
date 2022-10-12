@@ -37,12 +37,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
         _mintPrice = 0; // 0 klay initially.
     }
 
-    function getTwitterId(address from) public view returns(string memory) {
-        return addressToTwitterId[from];
-    }
-
-    function getAddressFromTwitterId(string memory id) public view returns(address) {
-        return twitterIdToAddress[id];
+    function getMintPrice() public view returns(uint256) {
+        return _mintPrice;
     }
 
     function setMintPrice(uint256 mintPriceInKlay) public onlyOwner {
