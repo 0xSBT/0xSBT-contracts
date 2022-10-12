@@ -14,7 +14,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     uint256 constant MAX_SCORE = 100;
 
     Counters.Counter private _tokenIdCounter;
-    uint256 private _mintPriceInKlay;
+    uint256 private _mintPrice;
     string baseURIFront;
     string baseURIBack;
 
@@ -34,7 +34,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     address[] public daos;
 
     constructor(string memory name, string memory symbol) KIP17(name, symbol) {
-        _mintPriceInKlay = 0; // 0 klay initially.
+        _mintPrice = 0; // 0 klay initially.
     }
 
     function getTwitterId(address from) public view returns(string memory) {
@@ -45,8 +45,8 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
         return twitterIdToAddress[id];
     }
 
-    function setMintPrice(uint256 mintPrice) public onlyOwner {
-        _mintPriceInKlay = mintPrice;
+    function setMintPrice(uint256 mintPriceInKlay) public onlyOwner {
+        _mintPrice = mintPriceInKlay * 1e18;
     }
 
     function setbaseURI(string memory front, string memory back)
@@ -58,7 +58,7 @@ contract SoulBoundToken is KIP17, Ownable, KIP17Enumerable, KIP17URIStorage {
     }
 
     function safeMint(address to, string memory twitterId) external payable {
-        require(msg.value == _mintPriceInKlay, "Minting price is not valid");
+        require(msg.value == _mintPrice, "Minting price is not valid");
         require(balanceOf(to) < 1, "One address cannot mint more than two");
         require(bytes(twitterId).length != 0, "Empty string is not allowed");
         require(bytes(addressToTwitterId[to]).length == 0, "The address is already registered");
